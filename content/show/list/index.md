@@ -1,17 +1,13 @@
 ---
 localeCode: zh-CN
-order: 50
+order: 70
 category: 展示类
 title: List 列表
 icon: doc-list
 dir: column
 noInline: true
-brief: 基础列表组件。
+brief: 基础列表组件
 ---
-
-## 使用场景
-
-最基础的列表展示，可展现文字、列表、图片、段落等，常用于后台数据展示页面。
 
 ## 代码演示
 
@@ -91,6 +87,7 @@ import { List, Avatar, ButtonGroup, Button } from '@douyinfe/semi-ui';
 class ContentList extends React.Component {
     render() {
         const data = [
+            // eslint-disable-next-line react/jsx-key
             <p
                 style={{
                     color: 'var(--semi-color-text-2)',
@@ -101,15 +98,17 @@ class ContentList extends React.Component {
                     textOverflow: 'ellipsis',
                 }}
             >
-                Semi Design 是由互娱社区前端团队与 UED
+                Semi Design 是由抖音前端团队与 UED
                 团队共同设计开发并维护的设计系统。设计系统包含设计语言以及一整套可复用的前端组件，帮助设计师与开发者更容易地打造高质量的、用户体验一致的、符合设计规范的
                 Web 应用。
             </p>,
+            // eslint-disable-next-line react/jsx-key
             <p style={{ color: 'var(--semi-color-text-2)', margin: '4px 0', width: 500 }}>
-                Semi Design 是由互娱社区前端团队与 UED
+                Semi Design 是由抖音前端团队与 UED
                 团队共同设计开发并维护的设计系统。设计系统包含设计语言以及一整套可复用的前端组件，帮助设计师与开发者更容易地打造高质量的、用户体验一致的、符合设计规范的
                 Web 应用。
             </p>,
+            // eslint-disable-next-line react/jsx-key
             <p style={{ color: 'var(--semi-color-text-2)', margin: '4px 0', width: 500 }}>
                 Semi Design 以用户中心、内容优先、设计人性化的设计系统，打造一致、好看、好用、高效的用户体验。
             </p>,
@@ -205,7 +204,7 @@ render(LayoutList);
 
 ```jsx live=true dir="column" noInline=true
 import React from 'react';
-import { List, Descriptions, ButtonGroup, Butto, Rating } from '@douyinfe/semi-ui';
+import { List, Descriptions, ButtonGroup, Rating, Button } from '@douyinfe/semi-ui';
 
 class LayoutList extends React.Component {
     render() {
@@ -758,135 +757,106 @@ render(VirtualizedScroll);
 ```
 
 ### 拖拽排序
+使用 [dnd-kit](https://github.com/clauderic/dnd-kit/tree/master) 可轻松实现拖拽排序。
 
-可以通过集成 [react-dnd](https://github.com/react-dnd/react-dnd) 来实现拖拽排序。
-
-```jsx live=true dir="column" noInline=true hideInDSM
-import React from 'react';
+```jsx live=true dir="column" hideInDSM
+import React, { useState } from 'react';
 import { List, Avatar } from '@douyinfe/semi-ui';
-import { DndProvider, DragSource, DropTarget } from 'react-dnd';
-import HTML5Backend from 'react-dnd-html5-backend';
-import ReactDOM from 'react-dom';
+import { DndContext, PointerSensor, MouseSensor, useSensors, useSensor } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { CSS as cssDndKit } from '@dnd-kit/utilities';
+import classNames from 'classnames';
 
-class DraggableItem extends React.Component {
-    render() {
-        const { component, draggingItem, index, connectDragSource, connectDropTarget } = this.props;
-        const opacity = draggingItem && draggingItem.index === index ? 0.3 : 1;
-        const style = {
+() => {
+    const data = [
+        {
+            id: 1,  // 添加唯一id
+            title: 'Semi Design Title 1',
+            color: 'red',
+        },
+        {
+            id: 2,
+            title: 'Semi Design Title 2',
+            color: 'grey',
+        },
+        {
+            id: 3,
+            title: 'Semi Design Title 3',
+            color: 'light-green',
+        },
+        {
+            id: 4,
+            title: 'Semi Design Title 4',
+            color: 'light-blue',
+        },
+        {
+            id: 5,
+            title: 'Semi Design Title 5',
+            color: 'pink',
+        },
+    ];
+    const [listItems, setListItems] = useState(data);
+
+    const sensors = useSensors(
+        useSensor(MouseSensor, {
+            activationConstraint: { distance: 1 },
+        })
+    );
+
+    const handleDragEnd = event => {
+        const { active, over } = event;
+        if (active.id !== over.id) {
+            setListItems((items) => {
+                const oldIndex = items.findIndex(item => item.id === active.id);
+                const newIndex = items.findIndex(item => item.id === over.id);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+    };
+
+    const ListItem = (props) => {
+        const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
+            id: props['id'],
+        });
+
+        const styles = {
+            ...props.style,
+            transform: cssDndKit.Transform.toString(transform),
+            transition,
             border: '1px solid var(--semi-color-border)',
             marginBottom: 12,
-            backgroundColor: 'var(--semi-color-bg-2)',
-            cursor: 'move',
+            cursor: 'grabbing',
+            ...(isDragging ? { zIndex: 999, position: 'relative', backgroundColor: 'var(--semi-color-bg-0)' } : {}),
+
         };
 
-        return connectDragSource(
-            connectDropTarget(
-                <div ref={node => (this.node = node)} style={{ ...style, opacity }}>
-                    {component}
-                </div>
-            )
-        );
-    }
-}
-
-const cardSource = {
-    beginDrag(props) {
-        return {
-            id: props.id,
-            index: props.index,
-        };
-    },
-};
-
-const cardTarget = {
-    hover(props, monitor, component) {
-        const dragIndex = monitor.getItem().index;
-        const hoverIndex = props.index;
-
-        if (dragIndex === hoverIndex) {
-            return;
-        }
-        const hoverBoundingRect = ReactDOM.findDOMNode(component).getBoundingClientRect();
-        const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-        const clientOffset = monitor.getClientOffset();
-        const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-        if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
-            return;
-        }
-
-        if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
-            return;
-        }
-
-        monitor.getItem().index = hoverIndex;
-        props.moveItem(dragIndex, hoverIndex);
-    },
-};
-
-function collectDragSource(connect, monitor) {
-    return {
-        connectDragSource: connect.dragSource(),
-        draggingItem: monitor.getItem(),
-    };
-}
-
-function collectDropTarget(connect) {
-    return {
-        connectDropTarget: connect.dropTarget(),
-    };
-}
-
-DraggableItem = DragSource('item', cardSource, collectDragSource)(DraggableItem);
-DraggableItem = DropTarget('item', cardTarget, collectDropTarget)(DraggableItem);
-
-class DraggableList extends React.Component {
-    constructor() {
-        const listItems = [
+        
+        const itemCls = classNames(
             {
-                title: 'Semi Design Title 1',
-                color: 'red',
-            },
-            {
-                title: 'Semi Design Title 2',
-                color: 'grey',
-            },
-            {
-                title: 'Semi Design Title 3',
-                color: 'light-green',
-            },
-            {
-                title: 'Semi Design Title 4',
-                color: 'light-blue',
-            },
-            {
-                title: 'Semi Design Title 5',
-                color: 'pink',
-            },
-        ];
-        super();
-        this.state = {
-            data: listItems,
-        };
-        this.moveItem = this.moveItem.bind(this);
-        this.renderDraggable = this.renderDraggable.bind(this);
-    }
-
-    moveItem(dragIndex, hoverIndex) {
-        const { data } = this.state;
-        let temp = data[dragIndex];
-        data[dragIndex] = data[hoverIndex];
-        data[hoverIndex] = temp;
-        this.setState(
-            {
-                ...this.state,
-                data
+                ['isDragging']: isDragging,
+                ['isOver']: isOver,
             }
         );
-    }
 
-    renderDraggable(item, id) {
-        const content = (
-            <List.Item
+        return (
+            <div
+                ref={setNodeRef} 
+                style={styles} 
+                className={itemCls}
+                {...listeners} 
+                {...attributes}
+            >
+                <List.Item {...props} ></List.Item>
+            </div>
+        );
+    };
+
+    const RenderDraggable = (item, id) => {
+        return (
+            <ListItem
+                id={id}
+                {...item}
                 header={<Avatar color={item.color}>SE</Avatar>}
                 main={
                     <div>
@@ -900,25 +870,375 @@ class DraggableList extends React.Component {
                 }
             />
         );
-        return (
-            <DraggableItem key={item.title} index={id} id={item.title} component={content} moveItem={this.moveItem} />
-        );
-    }
+    };
 
-    render() {
-        const { data } = this.state;
-        return (
-            <div style={{ padding: 12, border: '1px solid var(--semi-color-border)', margin: 12 }}>
-                <DndProvider backend={HTML5Backend}>
-                    <List dataSource={data} renderItem={this.renderDraggable} />
-                </DndProvider>
+    return (
+        <div style={{ padding: 12, border: '1px solid var(--semi-color-border)', margin: 12 }}>
+            <DndContext
+                autoScroll={true}
+                sensors={sensors}
+                modifiers={[restrictToVerticalAxis]}
+                onDragEnd={handleDragEnd}
+            >
+                <SortableContext items={listItems.map(data => data.id)} strategy={verticalListSortingStrategy}>
+                    <List dataSource={listItems} renderItem={RenderDraggable} />
+                </SortableContext>
+            </DndContext>
+        </div>
+    );
+};
+```
+
+
+### 带分页器 
+
+你可以组合使用 Pagination， 实现一个分页的 List
+
+```jsx live=true dir="column" hideInDSM
+
+import React, { useState } from 'react';
+import { List, Pagination } from '@douyinfe/semi-ui';
+
+() => {
+    const data = [
+        '围城',
+        '平凡的世界（全三册）',
+        '三体（全集）',
+        '雪中悍刀行（全集）',
+        '撒哈拉的故事',
+        '明朝那些事',
+        '一禅小和尚',
+        '沙丘',
+        '被讨厌的勇气',
+        '罪与罚',
+        '月亮与六便士',
+        '沉默的大多数',
+    ];
+
+    const [page, onPageChange] = useState(1);
+
+    let pageSize = 4;
+
+    const getData = (page) => {
+        let start = (page - 1) * pageSize;
+        let end = page * pageSize;
+        return data.slice(start, end);
+    };
+
+    return (
+        <div>
+            <div style={{ marginRight: 16, width: 280, display: 'flex', flexWrap: 'wrap' }}>
+                <List
+                    dataSource={getData(page)}
+                    split={false}
+                    size='small'
+                    className='component-list-demo-booklist'
+                    style={{ border: '1px solid var(--semi-color-border)', flexBasis: '100%', flexShrink: 0 }}
+                    renderItem={item => <List.Item className='list-item'>{item}</List.Item>}
+                />
+                <Pagination size='small' style={{ width: '100%', flexBasis: '100%', justifyContent: 'center' }} pageSize={pageSize} total={data.length} currentPage={page} onChange={cPage => onPageChange(cPage)} />
             </div>
-        );
+        </div>
+    );
+};
+```
+
+### 带筛选器
+
+你可以通过组装 Input 使用，实现对 List 列表的筛选
+
+```jsx live=true dir="column"  hideInDSM
+
+import React, { useState } from 'react';
+import { List, Input } from '@douyinfe/semi-ui';
+import { IconSearch } from '@douyinfe/semi-icons';
+
+() => {
+    const data = [
+        '围城',
+        '平凡的世界（全三册）',
+        '三体（全集）',
+        '雪中悍刀行（全集）',
+        '撒哈拉的故事',
+        '明朝那些事',
+        '一禅小和尚',
+        '沙丘',
+        '被讨厌的勇气',
+        '罪与罚',
+    ];
+
+    const [list, setList] = useState(data);
+
+    const onSearch = (string) => {
+        let newList;
+        if (string) {
+            newList = data.filter(item => item.includes(string));
+        } else {
+            newList = data;
+        }
+        setList(newList);
+    };
+
+    return (
+        <div>
+            <div style={{ marginRight: 16, width: 280, display: 'flex', flexWrap: 'wrap', border: '1px solid var(--semi-color-border)' }}>
+                <List
+                    className='component-list-demo-booklist'
+                    dataSource={list}
+                    split={false}
+                    header={<Input onCompositionEnd={(v) => onSearch(v.target.value)} onChange={(v) => !v ? onSearch() : null} placeholder='搜索' prefix={<IconSearch />} />}
+                    size='small'
+                    style={{ flexBasis: '100%', flexShrink: 0, borderBottom: '1px solid var(--semi-color-border)' }}
+                    renderItem={item =>
+                        <List.Item className='list-item'>{item}</List.Item>
+                    }
+                />
+            </div>
+        </div>
+    );
+};
+```
+
+### 添加删除项
+
+```jsx live=true dir="column" hideInDSM
+
+import React, { useState } from 'react';
+import { List, Input, Button } from '@douyinfe/semi-ui';
+import { IconMinusCircle, IconPlusCircle } from '@douyinfe/semi-icons';
+
+() => {
+    const data = [
+        '围城',
+        '平凡的世界（全三册）',
+        '三体（全集）',
+        '雪中悍刀行（全集）',
+        '撒哈拉的故事',
+        '明朝那些事',
+        '一禅小和尚',
+        '沙丘',
+        '被讨厌的勇气',
+        '罪与罚',
+        '月亮与六便士',
+        '沉默的大多数',
+        '第一人称单数',
+    ];
+    
+    const [list, setList] = useState(data.slice(0, 8));
+
+    const updateList = (item) => {
+        let newList;
+        if (item) {
+            newList = list.filter(i => item !== i);
+        } else {
+            newList = list.concat(data.slice(list.length, list.length + 1));
+        }
+        setList(newList);
+    };
+
+    return (
+        <div>
+            <div style={{ marginRight: 16, width: 280, display: 'flex', flexWrap: 'wrap', border: '1px solid var(--semi-color-border)' }}>
+                <List
+                    className='component-list-demo-booklist'
+                    dataSource={list}
+                    split={false}
+                    size='small'
+                    style={{ flexBasis: '100%', flexShrink: 0, borderBottom: '1px solid var(--semi-color-border)' }}
+                    renderItem={item => 
+                        <div style={{ margin: 4 }} className='list-item'>
+                            <Button type='danger' theme='borderless' icon={<IconMinusCircle />} onClick={() => updateList(item)} style={{ marginRight: 4 }} />
+                            {item}
+                        </div>
+                    }
+                />
+                <div style={{ margin: 4, fontSize: 14 }} onClick={() => updateList()}>
+                    <Button theme='borderless' icon={<IconPlusCircle />} style={{ marginRight: 4, color: 'var(--semi-color-info)' }}>
+                    </Button>
+                    新增书籍
+                </div>
+            </div>
+        </div>
+    );
+};
+```
+
+### 单选或多选
+
+你可以通过组合使用 Radio 或 Checkbox 将 List 增强为一个列表选择器
+
+```jsx live=true dir="column" hideInDSM
+
+import React, { useState } from 'react';
+import { List, Input, Button, Checkbox, Radio, RadioGroup, CheckboxGroup } from '@douyinfe/semi-ui';
+
+() => {
+    const data = [
+        '围城',
+        '平凡的世界（全三册）',
+        '三体（全集）',
+        '雪中悍刀行（全集）',
+        '撒哈拉的故事',
+        '明朝那些事',
+        '一禅小和尚',
+        '沙丘',
+        '被讨厌的勇气',
+        '罪与罚',
+        '月亮与六便士',
+        '沉默的大多数',
+        '第一人称单数',
+    ];
+
+    const [page, onPageChange] = useState(1);
+    const [checkboxVal, setCV] = useState([...data[0]]);
+    const [radioVal, setRV] = useState(data[0]);
+
+    let pageSize = 8;
+
+    const getData = (page) => {
+        let start = (page - 1) * pageSize;
+        let end = page * pageSize;
+        return data.slice(start, end);
+    };
+
+    return (
+        <div style={{ display: 'flex' }}>
+            <div style={{ marginRight: 16, width: 280, display: 'flex', flexWrap: 'wrap' }}>
+                <CheckboxGroup value={checkboxVal} onChange={(value) => setCV(value)}>
+                    <List
+                        dataSource={getData(page)}
+                        className='component-list-demo-booklist'
+                        split={false}
+                        size='small'
+                        style={{ border: '1px solid var(--semi-color-border)', flexBasis: '100%', flexShrink: 0 }}
+                        renderItem={item => <List.Item className='list-item'><Checkbox value={item}>{item}</Checkbox></List.Item>}
+                    />
+                </CheckboxGroup>
+            </div>
+            <div style={{ marginRight: 16, width: 280, display: 'flex', flexWrap: 'wrap' }}>
+                <RadioGroup value={radioVal} onChange={(e) => setRV(e.target.value)}>
+                    <List
+                        className='component-list-demo-booklist'
+                        dataSource={getData(page)}
+                        split={false}
+                        size='small'
+                        style={{ border: '1px solid var(--semi-color-border)', flexBasis: '100%', flexShrink: 0 }}
+                        renderItem={item => <List.Item className='list-item'><Radio value={item}>{item}</Radio></List.Item>}
+                    />
+                </RadioGroup>
+            </div>
+        </div>
+    );
+};
+```
+
+### 响应键盘事件
+
+你可以自行监听对应按键的键盘事件，实现不同 Item 的选择。如下面这个例子，可以使用上下方向键选择不同Item  
+
+```jsx live=true dir="column" hideInDSM
+
+import React, { useState, useRef } from 'react';
+import { List, Input, Button } from '@douyinfe/semi-ui';
+
+() => {
+    const data = [
+        '围城',
+        '平凡的世界（全三册）',
+        '三体（全集）',
+        '雪中悍刀行（全集）',
+        '撒哈拉的故事',
+        '明朝那些事',
+        '一禅小和尚',
+        '沙丘',
+        '被讨厌的勇气',
+        '罪与罚',
+        '月亮与六便士',
+        '沉默的大多数',
+        '第一人称单数',
+    ];
+
+    const [list, setList] = useState(data.slice(0, 10));
+    const [hoverIndex, setHi] = useState(-1);
+    const i = useRef(-1);
+
+    let changeIndex = (offset) => {
+        let currentIndex = i.current;
+        let index = currentIndex + offset;
+        if (index < 0) {
+            index = list.length - 1;
+        }
+        if (index >= list.length) {
+            index = 0;
+        }
+        i.current = index;
+        setHi(index);
+    };
+    useEffect(() => {
+        let keydownHandler = (event) => {
+            let key = event.keyCode;
+            switch (key) {
+                case 38: // KeyCode.UP
+                    event.preventDefault();
+                    changeIndex(-1);
+                    break;
+                case 40: // KeyCode.DOWN
+                    event.preventDefault();
+                    changeIndex(1);
+                    break;
+                default:
+                    break;
+            }
+        };
+        window.addEventListener('keydown', keydownHandler);
+        return () => {
+            window.removeEventListener('keydown', keydownHandler);
+        };
+    }, []);
+
+    return (
+        <div>
+            <div style={{ marginRight: 16, width: 280, display: 'flex', flexWrap: 'wrap', border: '1px solid var(--semi-color-border)' }}>
+                <List
+                    className='component-list-demo-booklist'
+                    dataSource={list}
+                    split={false}
+                    size='small'
+                    style={{ flexBasis: '100%', flexShrink: 0, borderBottom: '1px solid var(--semi-color-border)' }}
+                    renderItem={(item, index) =>
+                        <List.Item className={index === hoverIndex ? 'component-list-demo-booklist-active-item' : ''}>{item}</List.Item>
+                    }
+                />
+            </div>
+        </div>
+    );
+};
+```
+
+以上书单例子的Demo中涉及到的自定义样式如下
+
+```scss
+.component-list-demo-booklist {
+    .list-item {
+        &:hover {
+            background-color: var(--semi-color-fill-0);
+        }
+        &:active {
+            background-color: var(--semi-color-fill-1);
+        }
     }
 }
 
-render(DraggableList);
+
+body > .component-list-demo-drag-item {
+    font-size: 14px;
+}
+
+.component-list-demo-booklist-active-item {
+    background-color: var(--semi-color-fill-0);
+}
 ```
+
 
 ## API 参考
 
@@ -971,5 +1291,12 @@ render(DraggableList);
 | onClick      | 点击回调事件 **v>=1.0.0**                                                                           | (e: event) => void  | -            |
 | onRightClick | 右键点击回调事件 **v>=1.0.0**                                                                       | (e: event) => void  | -            |
 
+
+## 文案规范
+
+- 首字母大写
+- 结尾不跟随标点符号
+- 语法平行：如主动态与被动态、陈述句与祈使句混合使用
+  
 ## 设计变量
 <DesignToken/>
